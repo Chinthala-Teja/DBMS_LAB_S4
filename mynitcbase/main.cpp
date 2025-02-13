@@ -17,6 +17,6 @@ int main(int argc, char *argv[]) {
   Disk::readBlock(buffer2, 7000);
   memcpy(message2, buffer2 + 20, 6);
   std::cout << message2;
-
+//bscjbv
   return 0;
 }
