@@ -16,7 +16,7 @@ int RelCacheTable::getRelCatEntry(int relId, RelCatEntry *relCatBuf){
     *relCatBuf = relCache[relId]->relCatEntry;
 
     return SUCCESS;
-    
+     
 }
 
 void RelCacheTable::recordToRelCatEntry(union Attribute record[RELCAT_NO_ATTRS], RelCatEntry* relCatEntry){
