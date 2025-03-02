@@ -50,6 +50,12 @@ int RecBuffer::getRecord(union Attribute *rec, int slotNum) {
 
     int attrCount = head.numAttrs;
     int slotCount= head.numSlots;
+
+
+    if(slotNum >= slotCount || slotNum < 0)
+      return E_OUTOFBOUND;
+
+
     int recordSize = attrCount * ATTR_SIZE;
 
     int offset  = HEADER_SIZE + slotCount + slotNum * recordSize;
@@ -64,18 +70,32 @@ int BlockBuffer::loadBlockAndGetBufferPtr(unsigned char **bufferPtr){
 
     int bufferNum = StaticBuffer::getBufferNum(this->blockNum);
 
-    if(bufferNum == E_BLOCKNOTINBUFFER){
+    if(bufferNum != E_BLOCKNOTINBUFFER){
+
+      StaticBuffer::metainfo[bufferNum].timeStamp = 0;
+
+      for(int bufferIndex = 0; bufferIndex < BUFFER_CAPACITY; bufferIndex++){
+
+        if(StaticBuffer::metainfo[bufferIndex].free == false){
+
+            if(bufferIndex == bufferNum)
+              continue;
+            StaticBuffer::metainfo[bufferIndex].timeStamp++;
+     }
+    }
+  }
+  else{
       bufferNum = StaticBuffer::getFreeBuffer(this->blockNum);
   
       if(bufferNum == E_OUTOFBOUND){
         return E_OUTOFBOUND;
       }
-
       Disk::readBlock(StaticBuffer::blocks[bufferNum],this->blockNum);
-
     }
-    *bufferPtr = StaticBuffer::blocks[bufferNum];
-    return SUCCESS;
+
+
+  *bufferPtr = StaticBuffer::blocks[bufferNum];
+  return SUCCESS;
 }
 
 // STAGE 4
@@ -101,6 +121,8 @@ int RecBuffer::getSlotMap(unsigned char *slotMap){
   
 }
 
+ // STAGE - 5
+
 int compareAttrs(union Attribute attr1, union Attribute attr2, int attrType){
 
   double diff;
@@ -116,4 +138,42 @@ int compareAttrs(union Attribute attr1, union Attribute attr2, int attrType){
     return 0;
   else
     return -1;
+}
+
+// STAGE - 6
+
+int RecBuffer::setRecord(union Attribute *rec, int slotNum){
+
+    unsigned char *bufferPtr;
+
+    int ret = loadBlockAndGetBufferPtr(&bufferPtr);
+
+    if(ret != SUCCESS)
+      return ret;
+    
+    HeadInfo head;
+    this->getHeader(&head);
+
+    int attributeCount = head.numAttrs;
+    int slotCount = head.numSlots;
+
+    if(slotNum >= slotCount || slotNum < 0)
+      return E_OUTOFBOUND;
+
+    int recordSize = attributeCount * ATTR_SIZE;
+
+    int offset = HEADER_SIZE + slotCount + (recordSize * slotNum);
+
+    unsigned char *slotPointer = bufferPtr + offset;
+
+    memcpy( slotPointer, rec, recordSize);
+
+    int re = StaticBuffer::setDirtyBit(this->blockNum);
+
+    if(re !=SUCCESS)
+        printf("There is an issue in the code");
+    
+  return SUCCESS;
+
+
 }
