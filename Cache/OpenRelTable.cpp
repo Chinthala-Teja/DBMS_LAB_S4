@@ -26,7 +26,7 @@ OpenRelTable::OpenRelTable() {
     OpenRelTable::tableMetaInfo[i].free = true;
   }
 
-
+ 
    RecBuffer relCatBlock(RELCAT_BLOCK);
 
    Attribute relCatRecord[RELCAT_NO_ATTRS];
