@@ -8,6 +8,7 @@ BlockBuffer::BlockBuffer(int blockNum){
 }
 RecBuffer::RecBuffer(int blockNum) : BlockBuffer::BlockBuffer(blockNum) {}
 
+RecBuffer::RecBuffer() : BlockBuffer('R'){}
 
 
 int BlockBuffer::getHeader(struct HeadInfo *head){
@@ -18,17 +19,17 @@ int BlockBuffer::getHeader(struct HeadInfo *head){
     return ret;   // return any errors that might have occured in the process
   }
 
-    unsigned char buff[BLOCK_SIZE];
+    // unsigned char buff[BLOCK_SIZE];
     
-    Disk::readBlock(buff, this->blockNum);
+    // Disk::readBlock(buff, this->blockNum);
 
-    //memcpy(&head->blockType, buff , 4);
-    // memcpy(&head->pblock, buff + 4, 4);
-    memcpy(&head->lblock, buff + 8, 4);
-    memcpy(&head->rblock, buff + 12, 4);
-    memcpy(&head->numEntries, buff + 16, 4);
-    memcpy(&head->numAttrs, buff + 20, 4);
-    memcpy(&head->numSlots, buff + 24, 4);
+    memcpy(&head->blockType, bufferPtr , 4);
+    memcpy(&head->pblock, bufferPtr + 4, 4);
+    memcpy(&head->lblock, bufferPtr + 8, 4);
+    memcpy(&head->rblock, bufferPtr + 12, 4);
+    memcpy(&head->numEntries, bufferPtr + 16, 4);
+    memcpy(&head->numAttrs, bufferPtr + 20, 4);
+    memcpy(&head->numSlots, bufferPtr + 24, 4);
     //memcpy(&head->reserved, buff + 28, 4);
     return SUCCESS;
 
@@ -42,8 +43,8 @@ int RecBuffer::getRecord(union Attribute *rec, int slotNum) {
   if (ret != SUCCESS) {
     return ret;   // return any errors that might have occured in the process
   } 
-    unsigned char buff[BLOCK_SIZE];
-    Disk::readBlock(buff, this->blockNum);
+    // unsigned char buff[BLOCK_SIZE];
+    // Disk::readBlock(buff, this->blockNum);
 
     struct HeadInfo head;
     this->getHeader(&head);
@@ -60,7 +61,7 @@ int RecBuffer::getRecord(union Attribute *rec, int slotNum) {
 
     int offset  = HEADER_SIZE + slotCount + slotNum * recordSize;
     
-    unsigned char *slotPointer = buff + offset;
+    unsigned char *slotPointer = bufferPtr + offset;
     //printf("offset : %d\n",offset);
     memcpy(rec, slotPointer, recordSize);
     return SUCCESS;
@@ -176,4 +177,132 @@ int RecBuffer::setRecord(union Attribute *rec, int slotNum){
   return SUCCESS;
 
 
+}
+// STAGE - 7
+
+int BlockBuffer::setHeader(struct HeadInfo *head){
+
+    unsigned char *bufferPtr;
+
+    int ret = loadBlockAndGetBufferPtr(&bufferPtr);
+
+    if(ret != SUCCESS)
+      return SUCCESS;
+    
+    struct HeadInfo *bufferHeader = (struct HeadInfo *)bufferPtr;
+
+    bufferHeader->blockType = head->blockType;
+    bufferHeader->pblock = head->pblock;
+    bufferHeader->lblock = head->lblock;
+    bufferHeader->rblock = head->rblock;
+    bufferHeader->numEntries = head->numEntries;
+    bufferHeader->numAttrs = head->numAttrs;
+    bufferHeader->numSlots = head->numSlots;
+
+    int re = StaticBuffer::setDirtyBit(this->blockNum);
+
+    if(re != SUCCESS)
+      printf("There is an error in the Code");
+    
+    return re;
+}
+
+int BlockBuffer::setBlockType(int blockType){
+
+  unsigned char *bufferPtr;
+  int ret = loadBlockAndGetBufferPtr(&bufferPtr);
+
+  if(ret != SUCCESS)
+    return ret;
+  
+    *((int32_t *)bufferPtr) = blockType;
+
+    StaticBuffer::blockAllocMap[this->blockNum] = blockType;
+
+    int re = StaticBuffer::setDirtyBit(this->blockNum);
+
+    if(re != SUCCESS)
+      printf("There is an error in the Code");
+    
+    return re;
+}
+
+int BlockBuffer::getFreeBlock(int blockType){
+
+  int blockNum = 0;
+  for(; blockNum < DISK_BLOCKS; blockNum++){
+
+    if(StaticBuffer::blockAllocMap[blockNum] == UNUSED_BLK)
+          break;
+  }
+
+  if(blockNum == DISK_BLOCKS)
+      return E_DISKFULL;
+  
+  this->blockNum = blockNum;
+
+  int bufferNum = StaticBuffer::getFreeBuffer(this->blockNum);
+
+  HeadInfo head;
+  head.pblock = -1;
+  head.lblock = -1;
+  head.rblock = -1;
+  head.numAttrs = 0;
+  head.numEntries = 0;
+  head.numSlots = 0;
+  
+  setHeader(&head);
+
+  setBlockType(blockType);
+
+  return blockNum;
+}
+
+BlockBuffer::BlockBuffer(char blockType){
+
+    int bType;
+  if(blockType == 'R')
+        bType = REC;
+  else if(blockType == 'I')
+    bType = IND_INTERNAL;
+  else 
+    bType = IND_LEAF;
+  
+  int blockNum = getFreeBlock(bType);
+
+  if(blockNum == E_DISKFULL || blockNum < 0){
+      printf("The Disk is Full : blockNum = %d", blockNum);
+      return;
+  }
+  this->blockNum = blockNum;
+    
+
+}
+
+// STAGE - 7
+
+int RecBuffer::setSlotMap(unsigned char *slotMap){
+
+  unsigned char *bufferPtr;
+  int ret  = loadBlockAndGetBufferPtr(&bufferPtr);
+
+  if(ret != SUCCESS)
+    return SUCCESS;
+
+    HeadInfo head;
+    this->getHeader(&head);
+
+    int numSlots = head.numSlots;
+
+    //unsigned char buff[BLOCK_SIZE];
+
+    memcpy(bufferPtr + HEADER_SIZE ,slotMap,numSlots);
+
+    ret = StaticBuffer::setDirtyBit(this->blockNum);
+  
+    return ret ;
+}
+
+int BlockBuffer::getBlockNum(){
+  return this->blockNum;
 }
