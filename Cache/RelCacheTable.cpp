@@ -79,3 +79,33 @@ int RelCacheTable::resetSearchIndex(int relId){
 
     return SUCCESS;
 }
+
+
+// STAGE - 7
+
+int RelCacheTable::setRelCatEntry(int relId, RelCatEntry * relCatBuf){
+
+    if(relId < 0 || relId >= MAX_OPEN){
+        return E_OUTOFBOUND;
+    }
+    if(relCache[relId] == NULL){
+        return E_RELNOTOPEN;
+    }
+
+   // relCache[relId]->relCatEntry = *relcatBuf;
+    memcpy(&(RelCacheTable::relCache[relId]->relCatEntry), relCatBuf, sizeof(RelCatEntry));
+
+    relCache[relId]->dirty = true;
+
+    return SUCCESS;
+}
+
+void RelCacheTable::relCatEntryToRecord(RelCatEntry * relCatBuf,  union Attribute record[RELCAT_NO_ATTRS]){
+
+    strcpy(record[RELCAT_REL_NAME_INDEX].sVal, relCatBuf->relName);
+    record[RELCAT_NO_ATTRIBUTES_INDEX].nVal = relCatBuf->numAttrs ;
+    record[RELCAT_NO_RECORDS_INDEX].nVal = relCatBuf->numRecs ;
+    record[RELCAT_FIRST_BLOCK_INDEX].nVal = relCatBuf->firstBlk ;
+    record[RELCAT_LAST_BLOCK_INDEX].nVal = relCatBuf->lastBlk;
+    record[RELCAT_NO_SLOTS_PER_BLOCK_INDEX].nVal =  relCatBuf->numSlotsPerBlk;
+}
