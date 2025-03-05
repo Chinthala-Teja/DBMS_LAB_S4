@@ -2,8 +2,20 @@
 
 unsigned char StaticBuffer::blocks[BUFFER_CAPACITY][BLOCK_SIZE];
 struct BufferMetaInfo StaticBuffer::metainfo[BUFFER_CAPACITY];
+unsigned char StaticBuffer::blockAllocMap[DISK_BLOCKS];
 
 StaticBuffer::StaticBuffer(){
+
+    for(int i = 0, k = 0; i <= 3; i++){
+
+        unsigned char buffer[BLOCK_SIZE];
+        Disk::readBlock(buffer, i);
+
+        for(int j = 0; j < BLOCK_SIZE; j++, k++){
+            blockAllocMap[k] = buffer[j]; 
+        }
+
+    }
 
     for(int bufferIndex = 0; bufferIndex < BUFFER_CAPACITY; bufferIndex++){
 
@@ -16,6 +28,19 @@ StaticBuffer::StaticBuffer(){
 
 StaticBuffer::~StaticBuffer(){
 
+    for(int i = 0, k = 0; i <= 3; i++){
+
+        unsigned char buffer[BLOCK_SIZE];
+
+        for(int j = 0; j < BLOCK_SIZE; j++, k++){
+            buffer[j] = blockAllocMap[k]; 
+        }
+
+        Disk::writeBlock(buffer, i);
+
+    }
+
+    
     for(int bufferIndex = 0; bufferIndex < BUFFER_CAPACITY; bufferIndex++){
 
         if(metainfo[bufferIndex].free == false && metainfo[bufferIndex].dirty == true){
@@ -48,8 +73,7 @@ int StaticBuffer::getFreeBuffer(int blockNum){
             break;
         }
     }
-    if(allocatedBuffer == -1){
-        int largeTimestamp = -2, largeTSIndex = 0;
+        int largeTimestamp = 0, largeTSIndex = 0;
         for(int bufferIndex = 0; bufferIndex < BUFFER_CAPACITY; bufferIndex++){
 
             if(metainfo[bufferIndex].timeStamp > largeTimestamp){
@@ -58,11 +82,11 @@ int StaticBuffer::getFreeBuffer(int blockNum){
                 largeTimestamp = metainfo[bufferIndex].timeStamp;
             }
         }
-        if(metainfo[largeTSIndex].dirty == true){
+        if(metainfo[largeTSIndex].dirty == true  && allocatedBuffer == -1) {
             Disk::writeBlock(blocks[largeTSIndex], metainfo[largeTSIndex].blockNum);
             allocatedBuffer = largeTSIndex;
         }
-    }
+    
 
     metainfo[allocatedBuffer].free = false;
     metainfo[allocatedBuffer].dirty = false;
@@ -80,7 +104,7 @@ int StaticBuffer::getBufferNum(int blockNum){
 
     for(int bufferIndex = 0; bufferIndex < BUFFER_CAPACITY; bufferIndex++){
 
-        if(metainfo[bufferIndex].blockNum == blockNum){
+        if(metainfo[bufferIndex].blockNum == blockNum && metainfo[bufferIndex].free == false){
             
             return bufferIndex;
             
