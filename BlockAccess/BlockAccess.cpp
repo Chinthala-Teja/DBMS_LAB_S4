@@ -194,30 +194,30 @@ int BlockAccess::insert(int relId, Attribute *record){
        int numOfAttributes = relCatEntry.numAttrs;
        int prevBlockNum = -1;
 
-       while(blockNum != -1){
+       while(blockNum != -1){                                   // check the slot is free ....
 
                 RecBuffer recBuf(blockNum);
                 HeadInfo head;
                 recBuf.getHeader(&head);
                 unsigned char slotMap[head.numSlots];
                 recBuf.getSlotMap(slotMap);
-                int slot=-1;
+                //int slot=-1;
 
-                for(int i = 0; i < numOfSlots; i++){
+                for(int i = 0; i < head.numSlots; i++){
 
                         if(slotMap[i] == SLOT_UNOCCUPIED){
-                                //rec_id.slot = i;
-                                //rec_id.block = blockNum;
-                                slot=i;
+                                rec_id.slot = i;
+                                rec_id.block = blockNum;
+                                //slot=i;
                                 break;
                         }
                 }
 
-                if(slot!=-1){
-                        rec_id.slot=slot;
-                        rec_id.block=blockNum;
+                // if(slot!=-1){
+                //         rec_id.slot=slot;
+                //         rec_id.block=blockNum;
 
-                }
+                // }
                 // if(rec_id.block == -1 && rec_id.slot == -1)
                 //         break;
                 prevBlockNum = blockNum;
@@ -226,20 +226,21 @@ int BlockAccess::insert(int relId, Attribute *record){
 
        }
 
-       if(rec_id.block == -1 && rec_id.slot == -1){
+       if(rec_id.block == -1 && rec_id.slot == -1){             // if no slots are free, create a new Block 
 
 
                 int ret;
                 
-                if(relId == RELCAT_RELID)
+                if(relId == RELCAT_RELID){
                         return E_MAXRELATIONS;
+                }
                 
                         
-                         RecBuffer blockBuffer;
-                        ret = blockBuffer.getBlockNum();
-                        if (ret == E_DISKFULL) {
-                                return E_DISKFULL;
-                            }
+                RecBuffer blockBuffer;
+                ret = blockBuffer.getBlockNum();
+                if (ret == E_DISKFULL) {
+                        return E_DISKFULL;
+                }
                 
                 
                 rec_id.block = ret;
@@ -269,7 +270,7 @@ int BlockAccess::insert(int relId, Attribute *record){
                 }
                 blockBuffer.setSlotMap(slotMap);
 
-                if(prevBlockNum != -1){
+                if(prevBlockNum != -1){                         // connect the new block to right block of previousBlock's head
 
                         RecBuffer prevBlock(prevBlockNum);
                         HeadInfo head;
