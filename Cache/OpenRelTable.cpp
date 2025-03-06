@@ -124,7 +124,7 @@ AttrCacheTable::attrCache[RELCAT_RELID] = attrCacheHead0;
     OpenRelTable::tableMetaInfo[RELCAT_RELID].free = false;
     OpenRelTable::tableMetaInfo[ATTRCAT_RELID].free = false;
 
-    strcpy(tableMetaInfo[RELCAT_RELID].relName, "RELTIONCAT");
+    strcpy(tableMetaInfo[RELCAT_RELID].relName, "RELATIONCAT");
     strcpy(tableMetaInfo[ATTRCAT_RELID].relName, "ATTRIBUTECAT");
 
 }
