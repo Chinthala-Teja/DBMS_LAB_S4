@@ -201,17 +201,25 @@ int BlockAccess::insert(int relId, Attribute *record){
                 recBuf.getHeader(&head);
                 unsigned char slotMap[head.numSlots];
                 recBuf.getSlotMap(slotMap);
+                int slot=-1;
 
                 for(int i = 0; i < numOfSlots; i++){
 
                         if(slotMap[i] == SLOT_UNOCCUPIED){
-                                rec_id.slot = i;
-                                rec_id.block = blockNum;
+                                //rec_id.slot = i;
+                                //rec_id.block = blockNum;
+                                slot=i;
                                 break;
                         }
                 }
-                if(rec_id.block == -1 && rec_id.slot == -1)
-                        break;
+
+                if(slot!=-1){
+                        rec_id.slot=slot;
+                        rec_id.block=blockNum;
+
+                }
+                // if(rec_id.block == -1 && rec_id.slot == -1)
+                //         break;
                 prevBlockNum = blockNum;
                 blockNum = head.rblock;
                 
@@ -244,7 +252,11 @@ int BlockAccess::insert(int relId, Attribute *record){
                 head.pblock = -1;
                 head.rblock = -1;
                 head.numEntries = 0;
-                head.lblock = -1;
+                if(relCatEntry.firstBlk!=-1){
+                        head.lblock=prevBlockNum;
+                }else{
+                        head.lblock = -1;
+                }
                 head.numAttrs = relCatEntry.numAttrs;
                 head.numSlots = relCatEntry.numSlotsPerBlk;
 
@@ -278,9 +290,9 @@ int BlockAccess::insert(int relId, Attribute *record){
         recBuf.setRecord(record, rec_id.slot);
 
         unsigned char slotMap[relCatEntry.numSlotsPerBlk];
+        recBuf.getSlotMap(slotMap);
         slotMap[rec_id.slot] = SLOT_OCCUPIED;
         recBuf.setSlotMap(slotMap);
-
         HeadInfo head;
         recBuf.getHeader(&head);
         head.numEntries++;
