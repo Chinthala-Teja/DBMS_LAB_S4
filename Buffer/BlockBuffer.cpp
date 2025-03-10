@@ -306,3 +306,30 @@ int RecBuffer::setSlotMap(unsigned char *slotMap){
 int BlockBuffer::getBlockNum(){
   return this->blockNum;
 }
+
+// STAGE - 8
+
+void BlockBuffer::releaseBlock(){
+
+  if(this->blockNum == INVALID_BLOCKNUM || this->blockNum == StaticBuffer::blockAllocMap[blockNum] == UNUSED_BLK){
+    printf("Invalid Block");
+    return;
+  }
+  else{
+    int bufferNum = StaticBuffer::getBufferNum(this->blockNum);
+    
+    if(bufferNum == E_BLOCKNOTINBUFFER){
+      printf("Block is not in buffer");
+      return;
+    }
+      if(bufferNum >=0 && bufferNum < BUFFER_CAPACITY){
+
+        //free(StaticBuffer::blocks[bufferNum]);
+        StaticBuffer::metainfo[bufferNum].free = true; 
+      }
+      StaticBuffer::blockAllocMap[this->blockNum] = UNUSED_BLK;
+      this->blockNum = INVALID_BLOCKNUM;
+
+  }
+
+}
