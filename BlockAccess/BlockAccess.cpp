@@ -304,3 +304,132 @@ int BlockAccess::insert(int relId, Attribute *record){
 
         return SUCCESS;
 }
+
+// STAGE - 8
+
+int BlockAccess::search(int relId, Attribute *record, char attrName[ATTR_SIZE], Attribute attrVal, int op){
+
+        RecId recid;
+
+        recid = linearSearch(relId, attrName, attrVal, op);
+
+        if(recid.block == -1 && recid.slot == -1)
+                return E_NOTFOUND;
+        
+        RecBuffer recbuf(recid.block);
+        int ret = recbuf.getRecord(record, recid.slot);
+
+        if (ret != SUCCESS)
+                return ret;
+
+        return SUCCESS;
+}
+
+int BlockAccess::deleteRelation(char relName[ATTR_SIZE]){
+
+        if(strcmp(relName, RELCAT_RELNAME) == 0 || strcmp(relName, ATTRCAT_RELNAME)==0)
+                return E_NOTPERMITTED;
+        
+        RelCacheTable::resetSearchIndex(RELCAT_RELID);
+
+        Attribute relNameAttr;
+        strcpy(relNameAttr.sVal, relName);
+
+        RecId relRecid = linearSearch(RELCAT_RELID, RELCAT_ATTR_RELNAME, relNameAttr, EQ);
+
+        if(relRecid.block == -1 && relRecid.slot == -1)
+                return E_RELNOTEXIST;
+        
+        Attribute relCatEntryRecord[RELCAT_NO_ATTRS];
+        RecBuffer relRecBuf(relRecid.block);
+        relRecBuf.getRecord(relCatEntryRecord, relRecid.slot);
+
+        int firstBlock = relCatEntryRecord[RELCAT_FIRST_BLOCK_INDEX].nVal;
+        int numAttrs = relCatEntryRecord[RELCAT_NO_ATTRIBUTES_INDEX].nVal;
+
+        while(firstBlock != -1){
+
+                RecBuffer recBlock(firstBlock);
+                HeadInfo head;
+                recBlock.getHeader(&head);
+                firstBlock = head.rblock;
+                recBlock.releaseBlock();
+        }
+
+        RelCacheTable::resetSearchIndex(ATTRCAT_RELID);
+
+        int numberOfAttrsDelted = 0;
+
+        while(true){
+
+                RecId attrCatRecId = linearSearch(ATTRCAT_RELID, ATTRCAT_ATTR_RELNAME, relNameAttr, EQ);
+
+                if(attrCatRecId.block == -1 && attrCatRecId.slot == -1)
+                        break;
+                
+                numberOfAttrsDelted++;
+
+                RecBuffer recBuff(attrCatRecId.block);
+                HeadInfo attrhead;
+                recBuff.getHeader(&attrhead);
+                Attribute attrCatEntryRecord[ATTRCAT_NO_ATTRS];
+                recBuff.getRecord(attrCatEntryRecord, attrCatRecId.slot);
+
+                int rootBlock = attrCatEntryRecord[ATTRCAT_ROOT_BLOCK_INDEX].nVal;
+                
+                unsigned char slotMap[attrhead.numSlots];
+                recBuff.getSlotMap(slotMap);
+                slotMap[attrCatRecId.slot] = SLOT_UNOCCUPIED;
+                recBuff.setSlotMap(slotMap);
+                attrhead.numEntries--;
+                recBuff.setHeader(&attrhead);
+
+                if(attrhead.numEntries == 0){
+                        
+                        RecBuffer leftBlock(attrhead.lblock);
+                        HeadInfo lhead;
+                        leftBlock.getHeader(&lhead);
+                        lhead.rblock = attrhead.rblock;
+                        leftBlock.setHeader(&lhead);
+                
+                        if(attrhead.rblock !=-1){
+
+                                RecBuffer rblock(attrhead.rblock);
+                                HeadInfo rhead;
+                                rblock.getHeader(&rhead);
+                                rhead.lblock = attrhead.lblock;
+                                rblock.setHeader(&rhead);
+                        }
+                        else{
+                                RelCatEntry relCatEntry;
+                                RelCacheTable::getRelCatEntry(RELCAT_RELID, &relCatEntry);
+                                relCatEntry.lastBlk = attrhead.lblock;
+                        }
+
+                        recBuff.releaseBlock();
+                }
+
+        }
+        HeadInfo relHead;
+        relRecBuf.getHeader(&relHead);
+        relHead.numEntries--;
+        relRecBuf.setHeader(&relHead);
+
+        unsigned char slotMap[relHead.numSlots];
+        relRecBuf.getSlotMap(slotMap);
+        slotMap[relRecid.slot] = SLOT_UNOCCUPIED;
+        relRecBuf.setSlotMap(slotMap);
+
+        RelCatEntry relCatBuf;
+        RelCacheTable::getRelCatEntry(RELCAT_RELID, &relCatBuf);
+        relCatBuf.numRecs--;
+        RelCacheTable::setRelCatEntry(RELCAT_RELID, &relCatBuf);
+
+        RelCatEntry attrCatBuf;
+        RelCacheTable::getRelCatEntry(ATTRCAT_RELID, &attrCatBuf);
+        attrCatBuf.numRecs = attrCatBuf.numRecs - numberOfAttrsDelted;
+        RelCacheTable::setRelCatEntry(ATTRCAT_RELID, &attrCatBuf);
+
+        return SUCCESS;
+
+}
