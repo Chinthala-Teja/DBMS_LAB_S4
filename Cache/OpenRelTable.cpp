@@ -168,32 +168,14 @@ AttrCacheTable::attrCache[RELCAT_RELID] = attrCacheHead0;
     
     free(RelCacheTable::relCache[RELCAT_RELID]);
 
-    for(int i = 0 ; i < ATTRCAT_NO_ATTRS; i++){
+    for(int i = 0 ; i < 2; i++){
 
-      AttrCacheEntry *attrCacheBuf = AttrCacheTable::attrCache[RELCAT_RELID] , *next1= NULL;
-      next1 = attrCacheBuf->next;
-      if(attrCacheBuf->dirty == true){
-        RecId recid = attrCacheBuf->recId;
-        RecBuffer attrBlock(recid.block);
-        Attribute attrCatRecord[ATTRCAT_NO_ATTRS];
-        AttrCacheTable::attrCatEntryToRecord(&(attrCacheBuf->attrCatEntry), attrCatRecord);
-        attrBlock.setRecord(attrCatRecord, recid.slot);
-      }
-      
-      free(attrCacheBuf);
-      attrCacheBuf = next1;
-
-      AttrCacheEntry *attrCacheBuffer = AttrCacheTable::attrCache[ATTRCAT_RELID], *next2 = NULL;
-      next2 = attrCacheBuffer->next;
-      if(attrCacheBuf->dirty == true){
-        RecId recid = attrCacheBuffer->recId;
-        RecBuffer attrBlock(recid.block);
-        Attribute attrCatRecord[ATTRCAT_NO_ATTRS];
-        AttrCacheTable::attrCatEntryToRecord(&(attrCacheBuffer->attrCatEntry), attrCatRecord);
-        attrBlock.setRecord(attrCatRecord, recid.slot);
-      }
-      free(attrCacheBuffer);
-      attrCacheBuffer = next2;
+      AttrCacheEntry *attrCacheBuf = AttrCacheTable::attrCache[i];  
+      while(attrCacheBuf){
+        AttrCacheEntry * y = attrCacheBuf->next;
+        free(attrCacheBuf);
+        attrCacheBuf = y;
+      }   
 
     }
 
@@ -330,6 +312,7 @@ int OpenRelTable::closeRel(int relId){
   }
 
     free(RelCacheTable::relCache[relId]);
+
     AttrCacheEntry *head = AttrCacheTable::attrCache[relId];
 	  AttrCacheEntry *next = head->next;
 
@@ -341,7 +324,7 @@ int OpenRelTable::closeRel(int relId){
 	free(head);	
     tableMetaInfo[relId].free = true;
     AttrCacheTable::attrCache[relId] = nullptr;
-  RelCacheTable::relCache[relId] = nullptr;
+    RelCacheTable::relCache[relId] = nullptr;
   return SUCCESS;
 }
 
