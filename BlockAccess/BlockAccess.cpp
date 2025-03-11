@@ -201,12 +201,12 @@ int BlockAccess::insert(int relId, Attribute *record){
                 recBuf.getHeader(&head);
                 unsigned char slotMap[head.numSlots];
                 recBuf.getSlotMap(slotMap);
-                //int slot=-1;
+                //int slot =-1;
 
                 for(int i = 0; i < head.numSlots; i++){
 
                         if(slotMap[i] == SLOT_UNOCCUPIED){
-                                rec_id.slot = i;
+                                 rec_id.slot = i;
                                 rec_id.block = blockNum;
                                 //slot=i;
                                 break;
@@ -218,8 +218,6 @@ int BlockAccess::insert(int relId, Attribute *record){
                 //         rec_id.block=blockNum;
 
                 // }
-                // if(rec_id.block == -1 && rec_id.slot == -1)
-                //         break;
                 prevBlockNum = blockNum;
                 blockNum = head.rblock;
                 
